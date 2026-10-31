@@ -1,0 +1,40 @@
+{
+    "api_list": [
+        {
+            "name": "ManifestHub3",
+            "url": "https://codeload.github.com/steamtools-games/ManifestHub3/zip/refs/heads/<appid>",
+            "success_code": 200,
+            "unavailable_code": 404,
+            "enabled": true
+        },
+        {
+            "name": "Sushi",
+            "url": "https://raw.githubusercontent.com/sushi-dev55/sushitools-games-repo/refs/heads/main/<appid>.zip",
+            "success_code": 200,
+            "unavailable_code": 404,
+            "enabled": true
+        },
+        {
+            "name": "dc190-ManifestHub",
+            "url": "https://codeload.github.com/dc190/ManifestHub/zip/refs/heads/<appid>",
+            "success_code": 200,
+            "unavailable_code": 404,
+            "enabled": false
+        },
+        {
+            "name": "Ryuu",
+            "url": "https://generator.ryuu.lol/api/download/<appid>?file_type=manifest&auth_key=<apikey>",
+            "success_code": 200,
+            "unavailable_code": 404,
+            "api_key": "",
+            "enabled": true
+        },
+        {
+            "name": "Morrenus",
+            "url": "https://hubcapmanifest.com/api/v1/manifest/<appid>?api_key=<moapikey>",
+            "success_code": 200,
+            "unavailable_code": 404,
+            "enabled": true
+        }
+    ]
+}
