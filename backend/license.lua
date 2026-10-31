@@ -42,7 +42,8 @@ end
 function license.is_active()
     local key = read_key()
     if key == "" then return false, "missing" end
-    if #key < 16 then return false, "format" end
+    -- settings.json is user-writable and this string lands on a command line: charset gate first
+    if #key < 16 or #key > 19 or not key:match("^[0-9A-Z%-]+$") then return false, "format" end
     if _cache[key] ~= nil then
         if _cache[key] then return true, "ok" end
         return false, "mismatch"
