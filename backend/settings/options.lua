@@ -53,6 +53,14 @@ options.SETTINGS_GROUPS = {
                 description = "API Key required to use Sadie Source. Get from hubcapmanifest.com",
                 default = "",
                 metadata = {placeholder = "Enter your API key..."}
+            },
+            {
+                key = "licenseKey",
+                label = "كود التفعيل",
+                option_type = "text",
+                description = "كود تفعيل الإضافة (AK-YYYYMMDD-XXXX). الإضافة مقفلة بدونه.",
+                default = "",
+                metadata = {placeholder = "AK-20271031-0000", maxLength = 24}
             }
         }
     }

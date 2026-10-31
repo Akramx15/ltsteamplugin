@@ -3,7 +3,7 @@
   "name": "luatools",
   "common_name": "Akram's",
   "description": "Akram's smart in-place Steam downgrade engine with verified manifests, Force fallback, and reapply",
-  "version": "9.0.0",
+  "version": "9.0.1",
   "backendType": "lua",
   "include": [
     "public"

@@ -214,6 +214,12 @@ function manager.get_morrenus_api_key()
     return tostring(general.morrenusApiKey or "")
 end
 
+function manager.get_license_key()
+    local values = manager._get_values_locked()
+    local general = values.general or {}
+    return tostring(general.licenseKey or "")
+end
+
 function manager.get_available_locales()
     return _available_locale_codes()
 end

@@ -19,6 +19,7 @@ local downgrade        = require("downgrade")
 local fixes            = require("fixes")
 local settings_manager = require("settings.manager")
 local auto_update      = require("auto_update")
+local license          = require("license")
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,22 @@ end
 
 local function json_err(msg)
     return json_ok({ success = false, error = tostring(msg) })
+end
+
+-- Blocks the write actions (add game, downgrade, apply fix) until the licence key in
+-- Settings is valid. Read-only RPCs stay open so the UI can render and show the message.
+local function license_guard()
+    local ok, reason, expiry = license.is_active()
+    if ok then return nil end
+    if reason == "missing" then
+        return json_ok({ success = false, errorCode = "license_missing",
+            error = "license: الإضافة مقفلة — أدخل كود التفعيل في الإعدادات" })
+    elseif reason == "expired" then
+        return json_ok({ success = false, errorCode = "license_expired",
+            error = "license: انتهى كود التفعيل (" .. tostring(expiry) .. ")" })
+    end
+    return json_ok({ success = false, errorCode = "license_invalid",
+        error = "license: كود التفعيل غير صحيح" })
 end
 
 -- ── Webkit file management ───────────────────────────────────────────────────
@@ -109,6 +126,12 @@ local function on_load()
         pcall(m_utils.write_file, stamp, tostring(os.time()))
     end
 
+    local lic_ok, lic_reason = license.is_active()
+    if not lic_ok then
+        logger.warn("License inactive: " .. tostring(lic_reason))
+        api_manifest.store_last_message("الإضافة مقفلة — أدخل كود التفعيل في الإعدادات")
+    end
+
     local keys = {}
     for k, v in pairs(millennium) do table.insert(keys, k .. ":" .. type(v)) end
     logger.log("MILLENNIUM KEYS: " .. table.concat(keys, ", "))
@@ -166,6 +189,8 @@ local function downgrade_payload(content_script_query, payload_json)
 end
 
 function StartDowngrade(contentScriptQuery, payloadJson)
+    local deny = license_guard()
+    if deny then return deny end
     local ok, res = pcall(downgrade.start, downgrade_payload(contentScriptQuery, payloadJson))
     if not ok then return json_err(res) end
     return json_ok(res)
@@ -248,6 +273,8 @@ function HasLuaToolsForApp(appid)
 end
 
 function StartAddViaLuaTools(appid)
+    local deny = license_guard()
+    if deny then return deny end
     if type(appid) == "table" then appid = appid.appid end
     local ok, res = pcall(downloads.start_add_via_luatools, tonumber(appid))
     if not ok then return json_err(res) end
@@ -259,6 +286,12 @@ function GetActivationChecks(appid)
     local ok, res = pcall(downloads.get_activation_checks, tonumber(appid))
     if not ok then return json_err(res) end
     return json_ok(res)
+end
+
+function GetLicenseStatus()
+    local ok, reason, expiry = license.is_active()
+    return json_ok({ success = true, active = ok, reason = reason,
+                     expiry = expiry, hasKey = license.current_key() ~= "" })
 end
 
 function GetAddViaLuaToolsStatus(appid)
@@ -379,6 +412,8 @@ function GetMorrenusStats(api_key, force_refresh)
 end
 
 function StartAddViaLuaToolsFromUrl(apiName, appid, contentScriptQuery, url)
+    local deny = license_guard()
+    if deny then return deny end
     -- Millennium's IPC bridge sorts JS object keys alphabetically and passes their values as positional arguments.
     -- The JS passes: { apiName: ..., appid: ..., contentScriptQuery: "", url: ... }
     -- So the Lua signature MUST be (apiName, appid, contentScriptQuery, url)
@@ -475,6 +510,8 @@ function CheckForFixes(appid)
 end
 
 function ApplyGameFix(appid, contentScriptQuery, downloadUrl, fixType, gameName, installPath)
+    local deny = license_guard()
+    if deny then return deny end
     -- Millennium's IPC bridge sorts JS object keys alphabetically and passes their values as positional arguments.
     -- The JS passes: { appid, contentScriptQuery, downloadUrl, fixType, gameName, installPath }
     -- So the Lua signature MUST be (appid, contentScriptQuery, downloadUrl, fixType, gameName, installPath)
