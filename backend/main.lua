@@ -38,14 +38,17 @@ end
 -- Blocks the write actions (add game, downgrade, apply fix) until the licence key in
 -- Settings is valid. Read-only RPCs stay open so the UI can render and show the message.
 local function license_guard()
-    local ok, reason, expiry = license.is_active()
+    local ok, reason = license.is_active()
     if ok then return nil end
     if reason == "missing" then
         return json_ok({ success = false, errorCode = "license_missing",
             error = "license: الإضافة مقفلة — أدخل كود التفعيل في الإعدادات" })
-    elseif reason == "expired" then
-        return json_ok({ success = false, errorCode = "license_expired",
-            error = "license: انتهى كود التفعيل (" .. tostring(expiry) .. ")" })
+    elseif reason == "mismatch" then
+        return json_ok({ success = false, errorCode = "license_mismatch",
+            error = "license: كود التفعيل لا يطابق هذا الجهاز" })
+    elseif reason == "error" then
+        return json_ok({ success = false, errorCode = "license_error",
+            error = "license: تعذّر التحقق من كود التفعيل" })
     end
     return json_ok({ success = false, errorCode = "license_invalid",
         error = "license: كود التفعيل غير صحيح" })
@@ -128,8 +131,8 @@ local function on_load()
 
     local lic_ok, lic_reason = license.is_active()
     if not lic_ok then
-        logger.warn("License inactive: " .. tostring(lic_reason))
-        api_manifest.store_last_message("الإضافة مقفلة — أدخل كود التفعيل في الإعدادات")
+        logger.warn("License inactive: " .. tostring(lic_reason) .. " | hwid=" .. tostring(license.hwid()))
+        api_manifest.store_last_message("الإضافة مقفلة — كود التفعيل مو مطابق لهذا الجهاز")
     end
 
     local keys = {}
@@ -289,9 +292,9 @@ function GetActivationChecks(appid)
 end
 
 function GetLicenseStatus()
-    local ok, reason, expiry = license.is_active()
+    local ok, reason = license.is_active()
     return json_ok({ success = true, active = ok, reason = reason,
-                     expiry = expiry, hasKey = license.current_key() ~= "" })
+                     hwid = license.hwid(), hasKey = license.current_key() ~= "" })
 end
 
 function GetAddViaLuaToolsStatus(appid)
