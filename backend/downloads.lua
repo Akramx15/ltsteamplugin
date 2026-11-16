@@ -13,12 +13,23 @@ local cjson = require("json")
 local downloads = {}
 local DOWNLOAD_STATE = {}
 
+-- The background cmd only ever writes a status word, so a window the user closed (or a reboot)
+-- leaves {"status":"downloading"} behind forever: the UI keeps polling a dead job and the
+-- in-flight guard then swallows every new click. Anything older than this is a dead attempt.
+local STALE_DOWNLOAD_SECONDS = 180
+
 local function _set_download_state(appid, update)
     if type(appid) == "string" then appid = tonumber(appid) end
     if not DOWNLOAD_STATE[appid] then DOWNLOAD_STATE[appid] = {} end
     for k, v in pairs(update) do
         DOWNLOAD_STATE[appid][k] = v
     end
+end
+
+local function _state_file_age(state_file)
+    local ts = fs.last_write_time(state_file)
+    if type(ts) ~= "number" then return math.huge end
+    return os.time() - ts
 end
 
 local function _get_download_state(appid)
@@ -40,8 +51,16 @@ function downloads.get_add_status(appid)
         if content and content ~= "" then
             local success, data = pcall(cjson.decode, content)
             if success and type(data) == "table" and data.status then
-                _set_download_state(appid, { status = data.status, error = data.error })
-                
+                if (data.status == "downloading" or data.status == "extracting")
+                    and _state_file_age(state_file) > STALE_DOWNLOAD_SECONDS then
+                    pcall(fs.remove, state_file)
+                    _set_download_state(appid, { status = "failed", success = false,
+                        errorCode = "timeout",
+                        error = "timeout: انتهت مهلة التنزيل - اغلقت النافذة او تعطلت، جرّب مرة ثانية" })
+                else
+                    _set_download_state(appid, { status = data.status, error = data.error })
+                end
+
                 if data.status == "extracted" then
                     -- Background script finished! Complete the installation synchronously.
                     local dest_path = fs.join(dest_root, tostring(appid) .. ".zip")
@@ -234,6 +253,19 @@ function downloads.start_add_via_luatools_from_url(appid, url, apiName)
     if not appid then return { success = false, error = "Invalid appid" } end
 
     logger.log("LuaTools: StartAddViaLuaToolsFromUrl appid=" .. tostring(appid) .. " api=" .. tostring(apiName))
+
+    do
+        local dest_root = utils.ensure_temp_download_dir()
+        local state_file = fs.join(dest_root, tostring(appid) .. "_state.json")
+        if fs.exists(state_file) then
+            local prev = utils.decode_json(m_utils.read_file(state_file) or "") or {}
+            if (prev.status == "downloading" or prev.status == "extracting")
+                and _state_file_age(state_file) < STALE_DOWNLOAD_SECONDS then
+                logger.log("LuaTools: add already running for " .. tostring(appid) .. "; ignoring duplicate click")
+                return { success = true, already = true }
+            end
+        end
+    end
     _set_download_state(appid, { status = "downloading", currentApi = apiName, bytesRead = 0, totalBytes = 0 })
 
     local ok, res = pcall(function()
