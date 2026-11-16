@@ -5,6 +5,7 @@ local logger = require("plugin_logger")
 local paths = require("paths")
 local m_utils = require("utils")
 local version_sources = require("version_sources")
+local plugin_utils = require("plugin_utils")
 
 local version_catalog = {}
 
@@ -246,6 +247,7 @@ local function safe_get_json(url, maximum_bytes, request_budget)
     if type(body) ~= "string" or body == "" then return nil, "empty_response" end
     if #body > maximum_bytes then return nil, "response_too_large" end
 
+    if not plugin_utils.looks_like_json(body) then return nil, "invalid_json" end
     local decoded_ok, decoded = pcall(cjson.decode, body)
     if not decoded_ok or type(decoded) ~= "table" then return nil, "invalid_json" end
     return decoded

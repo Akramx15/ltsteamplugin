@@ -58,8 +58,40 @@ function utils.read_json(path)
     return {}
 end
 
+-- Millennium 3.6.3's cjson binding raises through a native error path that leaves the
+-- Lua state corrupted: the next RPC return crashes the host with 0xC0000005. So never
+-- hand cjson.decode a string that is not JSON (a dead API returning an HTML error page
+-- is what killed LuaTools on 2026-11-16).
+function utils.looks_like_json(text)
+    if type(text) ~= "string" then return false end
+    local first = text:find("[^%s]")
+    if not first then return false end
+    local head = text:sub(first, first)
+    if head ~= "{" and head ~= "[" then return false end
+    local last = #text
+    while last > first and text:sub(last, last):match("%s") do last = last - 1 end
+    local tail = text:sub(last, last)
+    if (head == "{" and tail ~= "}") or (head == "[" and tail ~= "]") then return false end
+    local depth, in_str, esc = 0, false, false
+    for i = first, last do
+        local b = text:byte(i)
+        if in_str then
+            if esc then esc = false
+            elseif b == 92 then esc = true
+            elseif b == 34 then in_str = false end
+        elseif b == 34 then in_str = true
+        elseif b == 123 or b == 91 then depth = depth + 1
+        elseif b == 125 or b == 93 then
+            depth = depth - 1
+            if depth < 0 then return false end
+        end
+    end
+    return depth == 0 and not in_str
+end
+
 function utils.decode_json(text)
     if not text or text == "" then return {} end
+    if not utils.looks_like_json(text) then return {} end
     local success, data = pcall(cjson.decode, text)
     if success then return data else return {} end
 end

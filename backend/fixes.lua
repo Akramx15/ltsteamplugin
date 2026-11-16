@@ -62,7 +62,7 @@ function fixes.apply_game_fix(appid, download_url, install_path, fix_type, game_
     local is_windows = m_utils.getenv("OS") == "Windows_NT"
     if is_windows then
         local cmd = string.format(
-            'cmd.exe /C start "Akram\'s Downloader" cmd.exe /C "color 0B && echo Akram\'s is downloading the requested files... && echo Please keep this window open until it closes automatically. && echo. && (echo {"status": "downloading"} > "%s" && curl.exe -# -L -A "discord(dot)gg/luatools" "%s" -o "%s" && echo {"status": "extracting"} > "%s" && echo. && echo Extracting files... && tar.exe -xf "%s" -C "%s" && echo {"status": "extracted"} > "%s") || (echo. && echo ERROR: Download or extraction failed! && echo {"status": "failed"} > "%s" && timeout /t 5)"',
+            'cmd.exe /C start "Akram\'s Downloader" cmd.exe /C "color 0B && echo Akram\'s is downloading the requested files... && echo Please keep this window open until it closes automatically. && echo. && (echo {"status": "downloading"} > "%s" && "%%SystemRoot%%/System32/curl.exe" -# -L -A "discord(dot)gg/luatools" "%s" -o "%s" && echo {"status": "extracting"} > "%s" && echo. && echo Extracting files... && "%%SystemRoot%%/System32/tar.exe" -xf "%s" -C "%s" && echo {"status": "extracted"} > "%s") || (echo. && echo ERROR: Download or extraction failed! && echo {"status": "failed"} > "%s" && "%%SystemRoot%%/System32/timeout.exe" /t 5)"',
             state_file, download_url, dest_zip, state_file, dest_zip, install_path, state_file, state_file
         )
         m_utils.exec(cmd)

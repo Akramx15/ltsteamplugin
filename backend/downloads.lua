@@ -152,7 +152,12 @@ function downloads._finalize_install_lua(appid, extract_dir, dest_path, api_name
             local new_lines = {}
             for source_line in text:gmatch("([^\n]*)\n?") do
                 local line = source_line
-                if line:match("^%s*setManifestid%(") then
+                -- Pin a depot only when its manifest is really in depotcache. A commented
+                -- setManifestid makes Steam fetch that depot from its servers, which a
+                -- licence-less app cannot do: "Failed building depot dependency
+                -- (Invalid content configuration)".
+                local depot, gid = line:match('^%s*setManifestid%(%s*(%d+)%s*,%s*"(%d+)"')
+                if depot and not fs.exists(fs.join(depot_cache, depot .. "_" .. gid .. ".manifest")) then
                     line = line:gsub("^(%s*)(setManifestid)", "%1-- %2")
                 end
                 table.insert(new_lines, line)
@@ -209,7 +214,7 @@ local function _launch_async_download(appid, url, dest_path, extract_dir)
     
     if is_windows then
         local cmd = string.format(
-            'cmd.exe /C start "Akram\'s Downloader" cmd.exe /C "color 0B && echo Akram\'s is downloading the requested files... && echo Please keep this window open until it closes automatically. && echo. && (echo {"status": "downloading"} > "%s" && curl.exe -# -L -A "discord(dot)gg/luatools" "%s" -o "%s" && echo {"status": "extracting"} > "%s" && echo. && echo Extracting files... && tar.exe -xf "%s" -C "%s" && echo {"status": "extracted"} > "%s") || (echo. && echo ERROR: Download or extraction failed! && echo {"status": "failed"} > "%s" && timeout /t 5)"',
+            'cmd.exe /C start "Akram\'s Downloader" cmd.exe /C "color 0B && echo Akram\'s is downloading the requested files... && echo Please keep this window open until it closes automatically. && echo. && (echo {"status": "downloading"} > "%s" && "%%SystemRoot%%/System32/curl.exe" -# -L -A "discord(dot)gg/luatools" "%s" -o "%s" && echo {"status": "extracting"} > "%s" && echo. && echo Extracting files... && "%%SystemRoot%%/System32/tar.exe" -xf "%s" -C "%s" && echo {"status": "extracted"} > "%s") || (echo. && echo ERROR: Download or extraction failed! && echo {"status": "failed"} > "%s" && "%%SystemRoot%%/System32/timeout.exe" /t 5)"',
             state_file, url, dest_path, state_file, dest_path, extract_dir, state_file, state_file
         )
         m_utils.exec(cmd)

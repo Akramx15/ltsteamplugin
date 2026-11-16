@@ -98,7 +98,7 @@ function auto_update.check_for_updates_now()
     if is_windows then
         -- Absolute bsdtar (unquoted: cmd /c mangles a leading quoted path), extract to staging then copy,
         -- so a failed extract never leaves the live plugin dir half-written.
-        cmd = string.format('curl.exe -sL --max-time 180 %s-A "discord(dot)gg/luatools" "%s" -o "%s" && C:\\Windows\\System32\\tar.exe -xf "%s" -C "%s" && xcopy "%s\\*" "%s\\" /E /Y /I /Q >NUL', auth, zip_url, pending_zip, pending_zip, staging, staging, paths.get_plugin_dir())
+        cmd = string.format('C:\\Windows\\System32\\curl.exe -sL --max-time 180 %s-A "discord(dot)gg/luatools" "%s" -o "%s" && C:\\\\Windows\\\\System32\\\\tar.exe -xf "%s" -C "%s" && xcopy "%s\\\\*" "%s\\\\" /E /Y /I /Q >NUL', auth, zip_url, pending_zip, pending_zip, staging, staging, paths.get_plugin_dir())
     else
         cmd = string.format('curl -L --max-time 180 %s-o "%s" "%s" && unzip -o -q "%s" -d "%s" && cp -R "%s/." "%s/"', auth, pending_zip, zip_url, pending_zip, staging, staging, paths.get_plugin_dir())
     end
